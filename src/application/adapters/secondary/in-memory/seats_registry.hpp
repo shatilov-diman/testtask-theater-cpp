@@ -25,15 +25,15 @@ class SeatsRegistryImpl : public SeatsRegistry {
     }
 
   public:
-    Seats load(const theater_guid_t& theater_guid, const movie_guid_t& movie_guid) {
+    std::optional<Seats> load(const theater_guid_t& theater_guid, const movie_guid_t& movie_guid) {
       std::lock_guard<std::mutex> lock(m_mutex);
       auto it = m_seats.find(theater_guid);
       if (it == m_seats.end()) {
-        return m_default_seats;
+        return std::nullopt;
       }
       auto it2 = it->second.find(movie_guid);
       if (it2 == it->second.end()) {
-        return m_default_seats;
+        return std::nullopt;
       }
       return it2->second;
     }

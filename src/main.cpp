@@ -1,79 +1,252 @@
 #include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <set>
 
 #include "config/config.hpp"
+#include "domain/movie.hpp"
+#include "domain/theater.hpp"
+#include "domain/seats.hpp"
 
-int main(int args, char* argv[]) {
-  std::cout << "Theater Application" << std::endl;
+namespace {
+  std::string prompt(const std::string& text) {
+    std::cout << text;
+    std::string line;
+    std::getline(std::cin, line);
+    return line;
+  }
+
+  void init_data(MovieRegistry& movie_registry, TheaterRegistry& theater_registry, SeatsRegistry& seats_registry) {
+    // Movies
+    movie_registry.save(Movie(movie_guid_t("movie_1"), "John Wick: Chapter 4", "Fourth installment of John Wick."));
+    movie_registry.save(Movie(movie_guid_t("movie_2"), "Transformers: Rise of the Beasts", "Transformers chapter."));
+    movie_registry.save(Movie(movie_guid_t("movie_3"), "Barbie", "Comedy by Greta Gerwig."));
+    movie_registry.save(Movie(movie_guid_t("movie_4"), "Oppenheimer", "Christopher Nolan biopic."));
+    movie_registry.save(Movie(movie_guid_t("movie_5"), "The Super Mario Bros. Movie", "Animated adventure."));
+
+    // Theaters
+    theater_registry.save(Theater(theater_guid_t("theater_1"), "Dubai Mall Reel Cinema", "Luxurious cineplex", {
+      movie_guid_t("movie_1"),
+      movie_guid_t("movie_3"),
+      movie_guid_t("movie_5"),
+    }));
+    theater_registry.save(Theater(theater_guid_t("theater_2"), "Mall of the Emirates Vox Cinema", "IMAX & 3D experience", {
+      movie_guid_t("movie_1"),
+      movie_guid_t("movie_2"),
+      movie_guid_t("movie_3"),
+    }));
+
+    // Book some seats
+    seats_registry.book_seats(theater_guid_t("theater_1"), movie_guid_t("movie_1"), {
+      seat_guid_t("a1"), seat_guid_t("a2"), seat_guid_t("b1"), seat_guid_t("b2")
+    });
+    seats_registry.book_seats(theater_guid_t("theater_1"), movie_guid_t("movie_3"), {
+      seat_guid_t("a3"), seat_guid_t("a4")
+    });
+    seats_registry.book_seats(theater_guid_t("theater_2"), movie_guid_t("movie_2"), {
+      seat_guid_t("c1"), seat_guid_t("c2"), seat_guid_t("d5")
+    });
+  }
+
+  void cmd_add_movie(MovieRegistry& movie_registry) {
+    const auto guid = prompt("Movie GUID: ");
+    const auto name = prompt("Movie name: ");
+    const auto description = prompt("Movie description: ");
+    movie_registry.save(Movie(movie_guid_t(guid), name, description));
+    std::cout << "OK: movie saved\n";
+  }
+
+  void cmd_add_theater(TheaterRegistry& theater_registry) {
+    const auto guid = prompt("Theater GUID: ");
+    const auto name = prompt("Theater name: ");
+    const auto description = prompt("Theater description: ");
+    theater_registry.save(Theater(theater_guid_t(guid), name, description, {}));
+    std::cout << "OK: theater saved\n";
+  }
+
+  void cmd_add_movie_to_theater(TheaterRegistry& theater_registry, MovieRegistry& movie_registry) {
+    const auto tguid_str = prompt("Theater GUID: ");
+    const auto mguid_str = prompt("Movie GUID: ");
+    const theater_guid_t tguid(tguid_str);
+    const movie_guid_t mguid(mguid_str);
+
+    const auto movie = movie_registry.load(mguid);
+    if (!movie) {
+      std::cout << "ERR: movie not found\n";
+      return;
+    }
+
+    const auto theater_opt = theater_registry.load(tguid);
+    if (!theater_opt) {
+      std::cout << "ERR: theater not found\n";
+      return;
+    }
+
+    auto movies = theater_opt->get_movies_guids();
+    movies.insert(mguid);
+    Theater updated(theater_opt->get_guid(), theater_opt->get_name(), theater_opt->get_description(), movies);
+    theater_registry.save(updated);
+    std::cout << "OK: movie added to theater\n";
+  }
+
+  void cmd_list_movies(MovieRegistry& movie_registry) {
+    const auto movies = movie_registry.load_movies(0, 1000);
+    if (movies.empty()) {
+      std::cout << "No movies\n";
+      return;
+    }
+    for (const auto& m : movies) {
+      std::cout << "- " << m.get_guid() << ": " << m.get_name() << "\n";
+    }
+  }
+
+  void cmd_list_movies_in_theater(TheaterRegistry& theater_registry, MovieRegistry& movie_registry) {
+    const auto tguid_str = prompt("Theater GUID: ");
+    const auto theater = theater_registry.load(theater_guid_t(tguid_str));
+    if (!theater) {
+      std::cout << "No theater found\n";
+      return;
+    }
+    const auto movies = theater->get_movies_guids();
+    if (movies.empty()) {
+      std::cout << "No movies in this theater\n";
+      return;
+    }
+    for (const auto& m : movies) {
+      const auto movie = movie_registry.load(m);
+      if (!movie) {
+        std::cout << "No movie found\n";
+        continue;
+      }
+      std::cout << "- " << movie->get_guid() << ": " << movie->get_name() << "\n";
+    }
+  }
+
+  void cmd_list_theaters(TheaterRegistry& theater_registry) {
+    const auto theaters = theater_registry.load_theaters(0, 1000);
+    if (theaters.empty()) {
+      std::cout << "No theaters\n";
+      return;
+    }
+    for (const auto& t : theaters) {
+      std::cout << "- " << t.get_guid() << ": " << t.get_name() << "\n";
+    }
+  }
+
+  void cmd_theaters_for_movie(TheaterRegistry& theater_registry) {
+    const auto mguid_str = prompt("Movie GUID: ");
+    const movie_guid_t mguid(mguid_str);
+    const auto theaters = theater_registry.load_theaters_showing_movie(mguid, 0, 1000);
+    if (theaters.empty()) {
+      std::cout << "No theaters for this movie\n";
+      return;
+    }
+    for (const auto& t : theaters) {
+      std::cout << "- " << t.get_guid() << ": " << t.get_name() << "\n";
+    }
+  }
+
+  void print_seats(const Seats& seats) {
+    std::stringstream ss;
+    std::size_t index = 0;
+    for (const auto& kv : seats.get_seats()) {
+      if (kv.second == SeatState::AVAILABLE) {
+        ss << '[' << kv.first << ']';
+      } else {
+        ss << '<' << kv.first << '>';
+      }
+      if (index++ % 5 == 4) {
+        ss << '\n';
+      }
+    }
+    std::cout << ss.str() << "\n";
+  }
+
+  void cmd_show_seats(SeatsRegistry& seats_registry) {
+    const auto tguid_str = prompt("Theater GUID: ");
+    const auto mguid_str = prompt("Movie GUID: ");
+    const auto s = seats_registry.load(theater_guid_t(tguid_str), movie_guid_t(mguid_str));
+    if (!s) {
+      std::cout << "No movie showing in this theater\n";
+      return;
+    }
+    print_seats(*s);
+  }
+
+  void cmd_book_seats(SeatsRegistry& seats_registry) {
+    const auto tguid_str = prompt("Theater GUID: ");
+    const auto mguid_str = prompt("Movie GUID: ");
+    const auto seats_csv = prompt("Seats to book (comma separated, e.g. a1,b2,c3): ");
+    std::set<seat_guid_t> seats_to_book;
+    std::istringstream ss(seats_csv);
+    std::string token;
+    while (std::getline(ss, token, ',')) {
+      if (!token.empty()) seats_to_book.insert(seat_guid_t(token));
+    }
+    const bool ok = seats_registry.book_seats(theater_guid_t(tguid_str), movie_guid_t(mguid_str), seats_to_book);
+    std::cout << (ok ? "OK: seats booked\n" : "ERR: failed to book seats\n");
+  }
+
+  void print_help() {
+    std::cout << "Commands:\n"
+              << "  help                     - Show this help\n"
+              << "  add-movie                - Add a movie\n"
+              << "  add-theater              - Add a theater\n"
+              << "  add-movie-to-theater     - Assign a movie to a theater\n"
+              << "  list-movies              - List movies\n"
+              << "  list-movies-in-theater   - List movies in a theater\n"
+              << "  list-theaters            - List theaters\n"
+              << "  theaters-for-movie       - List theaters that show a movie\n"
+              << "  show-seats               - Show seats availability for theater+movie\n"
+              << "  book-seats               - Book seats for theater+movie\n"
+              << "  exit                     - Quit\n";
+  }
+}
+
+int main(int /*args*/, char* /*argv*/[]) {
+  std::cout << "Theater Application (interactive)" << std::endl;
 
   auto config = make_config();
   MovieRegistry& movie_registry = config->get_movie_registry();
   TheaterRegistry& theater_registry = config->get_theater_registry();
   SeatsRegistry& seats_registry = config->get_seats_registry();
 
-  std::cout << "Initializing movies" << std::endl;
+  // Seed initial data unconditionally
+  init_data(movie_registry, theater_registry, seats_registry);
 
-  movie_registry.save(Movie(movie_guid_t("movie_1"), "John Wick: Chapter 4", "The fourth installment of the John Wick franchise, directed by Chad Stahelski and starring Keanu Reeves."));
-  movie_registry.save(Movie(movie_guid_t("movie_2"), "Transformers: Rise of the Beasts", "The fourth installment of the Transformers franchise, directed by Michael Bay and starring Shia LaBeouf."));
-  movie_registry.save(Movie(movie_guid_t("movie_3"), "Barbie", "A Barbie movie, directed by Greta Gerwig and starring Margot Robbie."));
-  movie_registry.save(Movie(movie_guid_t("movie_4"), "Oppenheimer", "A movie about the life of J. Robert Oppenheimer, directed by Christopher Nolan and starring Cillian Murphy."));
-  movie_registry.save(Movie(movie_guid_t("movie_5"), "The Super Mario Bros. Movie", "A movie about the life of J. Robert Oppenheimer, directed by Christopher Nolan and starring Cillian Murphy."));
-
-  std::cout << "Initializing theaters" << std::endl;
-
-  theater_registry.save(Theater(theater_guid_t("theater_1"), "Dubai Mall Reel Cinema", "Enjoy a movie experience like never before in the world's largest and most luxurious cineplex", {
-    movie_guid_t("movie_1"),
-    movie_guid_t("movie_3"),
-    movie_guid_t("movie_5"),
-  }));
-  theater_registry.save(Theater(theater_guid_t("theater_2"), "Mall of the Emirates Vox Cinema", "VOX Cinemas offers an exciting movie experience for all ages with IMAX & 3D. Book now to enjoy the latest Hollywood blockbusters, action, comedies & more.", {
-    movie_guid_t("movie_1"),
-    movie_guid_t("movie_2"),
-    movie_guid_t("movie_3"),
-  }));
-
-  std::cout << "Loading movies" << std::endl;
-  const auto movies = movie_registry.load_movies(0, 10);
-  std::cout << "Movies: " << movies.size() << std::endl;
-
-  for (const auto& movie : movies) {
-    const auto theaters = theater_registry.load_theaters_showing_movie(movie.get_guid(), 0, 10);
-    for (const auto& theater : theaters) {
-      std::cout << movie.get_name() << " is showing at " << theater.get_name() << std::endl;
+  print_help();
+  for (;;) {
+    std::cout << "> ";
+    std::string cmd;
+    if (!std::getline(std::cin, cmd)) break;
+    if (cmd == "help" || cmd == "h") {
+      print_help();
+    } else if (cmd == "add-movie") {
+      cmd_add_movie(movie_registry);
+    } else if (cmd == "add-theater") {
+      cmd_add_theater(theater_registry);
+    } else if (cmd == "add-movie-to-theater") {
+      cmd_add_movie_to_theater(theater_registry, movie_registry);
+    } else if (cmd == "list-movies") {
+      cmd_list_movies(movie_registry);
+    } else if (cmd == "list-movies-in-theater") {
+      cmd_list_movies_in_theater(theater_registry, movie_registry);
+    } else if (cmd == "list-theaters") {
+      cmd_list_theaters(theater_registry);
+    } else if (cmd == "theaters-for-movie") {
+      cmd_theaters_for_movie(theater_registry);
+    } else if (cmd == "show-seats") {
+      cmd_show_seats(seats_registry);
+    } else if (cmd == "book-seats") {
+      cmd_book_seats(seats_registry);
+    } else if (cmd == "exit" || cmd == "quit" || cmd == "q") {
+      break;
+    } else if (cmd.empty()) {
+      continue;
+    } else {
+      std::cout << "Unknown command. Type 'help'\n";
     }
-  }
-
-  std::cout << "Loading theaters" << std::endl;
-  const auto theaters = theater_registry.load_theaters(0, 10);
-  std::cout << "Theaters: " << theaters.size() << std::endl;
-
-  for (const auto& theater : theaters) {
-    for (const auto& movie_guid : theater.get_movies_guids()) {
-      const auto movie = movie_registry.load(movie_guid);
-      if (!movie) {
-        std::cout << "Movie not found: " << movie_guid << std::endl;
-        continue;
-      }
-      std::cout << theater.get_name() << " is showing " << movie->get_name() << std::endl;
-    }
-  }
-
-  std::cout << "Loading seats" << std::endl;
-
-  const auto seats = seats_registry.load(theater_guid_t("theater_1"), movie_guid_t("movie_1"));
-  std::cout << "Seats: " << seats.get_seats().size() << std::endl;
-
-  std::cout << "Booking seats a1, a2, b1, b2" << std::endl;
-  const std::set<seat_guid_t> book_seats = { seat_guid_t("a1"), seat_guid_t("a2"), seat_guid_t("b1"), seat_guid_t("b2") };
-  const auto booked = seats_registry.book_seats(theater_guid_t("theater_1"), movie_guid_t("movie_1"), book_seats);
-  if (!booked) {
-    std::cout << "Failed to book seats" << std::endl;
-  }
-
-  std::cout << "Booking seats a3, a4, b1, b2" << std::endl;
-  const std::set<seat_guid_t> book_seats_2 = { seat_guid_t("a3"), seat_guid_t("a4"), seat_guid_t("b1"), seat_guid_t("b2") };
-  const auto booked_2 = seats_registry.book_seats(theater_guid_t("theater_1"), movie_guid_t("movie_1"), book_seats_2);
-  if (!booked_2) {
-    std::cout << "Failed to book seats" << std::endl;
   }
 
   return 0;
