@@ -17,6 +17,7 @@ class BasicConanfile(ConanFile):
 
     def requirements(self):
         self.requires("boost/1.84.0")
+        self.requires("strong_type/v15")
 
     def build_requirements(self):
         self.tool_requires("cmake/[>=3.24 <4]")
