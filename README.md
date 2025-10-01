@@ -2,6 +2,9 @@
 
 Interactive console app to manage theaters, movies, and seat bookings. Dependencies and builds are handled by Conan + CMake.
 
+## Notes
+It's also requied to add version checks to the solution to avoid data-races during save threads or movies 
+
 ## Requirements
 - Conan 2.x
 - CMake (provided as a build-require by Conan)
@@ -34,3 +37,24 @@ Available commands:
 - exit
 
 Initial data (including some pre-booked seats) is seeded automatically at startup.
+
+## Docker
+
+Build the image:
+
+```bash
+docker build -t theater .
+```
+
+Run the app in a container:
+
+```bash
+docker run --rm -it theater
+```
+
+Use the prebuilt image instead:
+
+```bash
+docker pull shatilovdiman/theater:latest
+docker run --rm -it shatilovdiman/theater:latest
+```

@@ -2,6 +2,9 @@
 
 #include "domain/theater.hpp"
 
+#include <optional>
+#include <vector>
+
 class TheaterRegistry {
   public:
     TheaterRegistry() {

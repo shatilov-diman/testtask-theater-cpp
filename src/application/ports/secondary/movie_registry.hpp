@@ -2,6 +2,9 @@
 
 #include "domain/movie.hpp"
 
+#include <optional>
+#include <vector>
+
 class MovieRegistry {
   public:
     MovieRegistry() {

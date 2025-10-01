@@ -4,6 +4,8 @@
 #include "application/ports/secondary/theater_registry.hpp"
 #include "application/ports/secondary/seats_registry.hpp"
 
+#include <memory>
+
 class Config {
   public:
     Config() {
