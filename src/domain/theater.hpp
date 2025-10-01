@@ -29,4 +29,12 @@ class Theater {
     std::set<movie_guid_t> get_movies_guids() const {
       return m_movies_guids;
     }
+
+    void add_movie_guid(const movie_guid_t& movie_guid) {
+      m_movies_guids.insert(movie_guid);
+    }
+
+    void remove_movie_guid(const movie_guid_t& movie_guid) {
+      m_movies_guids.erase(movie_guid);
+    }
 };

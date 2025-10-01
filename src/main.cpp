@@ -77,16 +77,14 @@ namespace {
       return;
     }
 
-    const auto theater_opt = theater_registry.load(tguid);
-    if (!theater_opt) {
+    auto theater = theater_registry.load(tguid);
+    if (!theater) {
       std::cout << "ERR: theater not found\n";
       return;
     }
 
-    auto movies = theater_opt->get_movies_guids();
-    movies.insert(mguid);
-    Theater updated(theater_opt->get_guid(), theater_opt->get_name(), theater_opt->get_description(), movies);
-    theater_registry.save(updated);
+    theater->add_movie_guid(mguid);
+    theater_registry.save(*theater);
     std::cout << "OK: movie added to theater\n";
   }
 
