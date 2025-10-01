@@ -1,3 +1,5 @@
+#pragma once
+
 #include "domain/theater.hpp"
 
 class TheaterRegistry {

@@ -11,6 +11,7 @@ find_package(strong_type CONFIG REQUIRED)
 
 add_executable(theater
     src/main.cpp
+    src/config/config.cpp
 )
 
 target_include_directories(theater PRIVATE
