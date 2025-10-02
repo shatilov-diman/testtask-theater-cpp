@@ -11,7 +11,7 @@ find_package(GTest CONFIG REQUIRED)
 
 add_executable(theater
     src/main.cpp
-    src/config/config.cpp
+    src/app/context.cpp
 )
 
 target_include_directories(theater PRIVATE
@@ -27,7 +27,7 @@ install(TARGETS theater RUNTIME DESTINATION bin)
 enable_testing()
 add_executable(tests
     tests/main.cpp
-    src/config/config.cpp
+    src/app/context.cpp
 )
 target_include_directories(tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src

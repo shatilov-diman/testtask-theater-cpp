@@ -1,17 +1,17 @@
 #include <gtest/gtest.h>
 
-#include "config/config.hpp"
+#include "app/context.hpp"
 
 TEST(SeatsRegistryTest, LoadReturnsEmptyWhenNotInitialized) {
-  auto cfg = make_config();
-  SeatsRegistry& seats = cfg->get_seats_registry();
+  auto ctx = make_app_context();
+  SeatsRegistry& seats = ctx->seats();
   auto s = seats.load(theater_guid_t("t1"), movie_guid_t("m1"));
   EXPECT_FALSE(s.has_value());
 }
 
 TEST(SeatsRegistryTest, BookAndLoadReflectsBookedSeats) {
-  auto cfg = make_config();
-  SeatsRegistry& seats = cfg->get_seats_registry();
+  auto ctx = make_app_context();
+  SeatsRegistry& seats = ctx->seats();
 
   EXPECT_FALSE(seats.load(theater_guid_t("t1"), movie_guid_t("m1")).has_value());
 

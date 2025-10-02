@@ -4,7 +4,7 @@
 #include <vector>
 #include <set>
 
-#include "config/config.hpp"
+#include "app/context.hpp"
 #include "domain/movie.hpp"
 #include "domain/theater.hpp"
 #include "domain/seats.hpp"
@@ -234,10 +234,10 @@ namespace {
 int main(int /*args*/, char* /*argv*/[]) {
   std::cout << "Theater Application (interactive)" << std::endl;
 
-  auto config = make_config();
-  MovieRegistry& movie_registry = config->get_movie_registry();
-  TheaterRegistry& theater_registry = config->get_theater_registry();
-  SeatsRegistry& seats_registry = config->get_seats_registry();
+  auto context = make_app_context();
+  MovieRegistry& movie_registry = context->movies();
+  TheaterRegistry& theater_registry = context->theaters();
+  SeatsRegistry& seats_registry = context->seats();
 
   // Seed initial data unconditionally
   init_data(movie_registry, theater_registry, seats_registry);
