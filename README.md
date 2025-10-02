@@ -58,3 +58,9 @@ Use the prebuilt image instead:
 docker pull shatilovdiman/theater:latest
 docker run --rm -it shatilovdiman/theater:latest
 ```
+
+Run tests:
+
+```bash
+docker run --rm -it shatilovdiman/theater:latest /app/tests
+```
