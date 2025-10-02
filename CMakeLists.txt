@@ -26,8 +26,11 @@ install(TARGETS theater RUNTIME DESTINATION bin)
 
 enable_testing()
 add_executable(tests
-    tests/main.cpp
     src/app/context.cpp
+    tests/main.cpp
+    tests/movies.cpp
+    tests/seats.cpp
+    tests/theaters.cpp
 )
 target_include_directories(tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
