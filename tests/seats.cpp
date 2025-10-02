@@ -57,3 +57,25 @@ TEST(SeatsRegistryTest, ConcurrentOverbookingIsPrevented) {
   EXPECT_FALSE(after->is_seat_available(seat_guid_t("a1")));
   EXPECT_FALSE(after->is_seat_available(seat_guid_t("a2")));
 }
+
+TEST(SeatsRegistryTest, ConcurrentNonOverlappingBookingsBothSucceed) {
+  auto ctx = make_app_context();
+  auto& seats = ctx->seats();
+  const theater_guid_t t("t1");
+  const movie_guid_t m("m1");
+
+  auto f1 = std::async(std::launch::async, [&]() {
+    return seats.book_seats(t, m, { seat_guid_t("a1"), seat_guid_t("a2") });
+  });
+  auto f2 = std::async(std::launch::async, [&]() {
+    return seats.book_seats(t, m, { seat_guid_t("b1"), seat_guid_t("b2") });
+  });
+
+  EXPECT_FALSE(f1.get().has_value());
+  EXPECT_FALSE(f2.get().has_value());
+
+  auto after = seats.load(t, m);
+  ASSERT_TRUE(after.has_value());
+  EXPECT_FALSE(after->is_seat_available(seat_guid_t("a1")));
+  EXPECT_FALSE(after->is_seat_available(seat_guid_t("a2")));
+}

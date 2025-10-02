@@ -16,3 +16,23 @@ TEST(TheaterRegistryTest, SaveAndQueryTheatersForMovie) {
   auto res = theaters.load_theaters_showing_movie(movie_guid_t("m1"), 0, 10);
   ASSERT_EQ(res.size(), 2u);
 }
+
+TEST(TheaterRegistryTest, AddMovieToTheater) {
+  auto ctx = make_app_context();
+  auto& movies = ctx->movies();
+  auto& theaters = ctx->theaters();
+
+  const auto mg = movie_guid_t("m1");
+  const auto tg = theater_guid_t("t1");
+  movies.save(Movie(mg, "M1", ""));
+  theaters.save(Theater(tg, "T1", "", {}));
+
+  auto t = theaters.load(tg);
+  ASSERT_TRUE(t.has_value());
+  t->add_movie_guid(mg);
+  theaters.save(*t);
+
+  auto res = theaters.load_theaters_showing_movie(mg, 0, 10);
+  ASSERT_EQ(res.size(), 1u);
+  EXPECT_EQ(res[0].get_guid(), tg);
+}
