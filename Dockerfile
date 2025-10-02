@@ -32,6 +32,7 @@ RUN conan build . -of .build
 FROM debian:bookworm-slim AS runtime
 
 WORKDIR /app
-COPY --from=build /app/.build/build/Release/theater /usr/local/bin/theater
+COPY --from=build /app/.build/build/Release/theater /app/theater
+COPY --from=build /app/.build/build/Release/tests /app/tests
 
-CMD ["/usr/local/bin/theater"]
+CMD ["/app/theater"]
