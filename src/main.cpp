@@ -207,8 +207,12 @@ namespace {
         seats_to_book.insert(seat_guid_t(token));
       }
     }
-    const bool ok = seats_registry.book_seats(tguid, mguid, seats_to_book);
-    std::cout << (ok ? "OK: seats booked\n" : "ERR: failed to book seats\n");
+    const auto result = seats_registry.book_seats(tguid, mguid, seats_to_book);
+    if (result) {
+      std::cout << *result << "\n";
+    } else {
+      std::cout << "OK: seats booked\n";
+    }
   }
 
   void print_help() {

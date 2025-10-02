@@ -38,7 +38,7 @@ class SeatsRegistryImpl : public SeatsRegistry {
       return it2->second;
     }
 
-    bool book_seats(const theater_guid_t& theater_guid, const movie_guid_t& movie_guid, const std::set<seat_guid_t>& seats) {
+    std::optional<error_message_t> book_seats(const theater_guid_t& theater_guid, const movie_guid_t& movie_guid, const std::set<seat_guid_t>& seats) {
       std::lock_guard<std::mutex> lock(m_mutex);
       auto it = m_seats.find(theater_guid);
       if (it == m_seats.end()) {
@@ -51,10 +51,10 @@ class SeatsRegistryImpl : public SeatsRegistry {
       }
       for (const auto& seat : seats) {
         if (!it2->second.is_seat_available(seat)) {
-          return false;
+          return error_message_t(seat.value_of() + " is not available");
         }
       }
       it2->second.book_seats(seats);
-      return true;
+      return std::nullopt;
     }
 };
