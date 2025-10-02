@@ -10,11 +10,12 @@
 #include "domain/seats.hpp"
 
 namespace {
-  std::string prompt(const std::string& text) {
+  template <typename ST = std::string>
+  ST prompt(const std::string& text) {
     std::cout << text;
     std::string line;
     std::getline(std::cin, line);
-    return line;
+    return ST(line);
   }
 
   void init_data(MovieRegistry& movie_registry, TheaterRegistry& theater_registry, SeatsRegistry& seats_registry) {
@@ -50,26 +51,24 @@ namespace {
   }
 
   void cmd_add_movie(MovieRegistry& movie_registry) {
-    const auto guid = prompt("Movie GUID: ");
+    const auto guid = prompt<movie_guid_t>("Movie GUID: ");
     const auto name = prompt("Movie name: ");
     const auto description = prompt("Movie description: ");
-    movie_registry.save(Movie(movie_guid_t(guid), name, description));
+    movie_registry.save(Movie(guid, name, description));
     std::cout << "OK: movie saved\n";
   }
 
   void cmd_add_theater(TheaterRegistry& theater_registry) {
-    const auto guid = prompt("Theater GUID: ");
+    const auto guid = prompt<theater_guid_t>("Theater GUID: ");
     const auto name = prompt("Theater name: ");
     const auto description = prompt("Theater description: ");
-    theater_registry.save(Theater(theater_guid_t(guid), name, description, {}));
+    theater_registry.save(Theater(guid, name, description, {}));
     std::cout << "OK: theater saved\n";
   }
 
   void cmd_add_movie_to_theater(TheaterRegistry& theater_registry, MovieRegistry& movie_registry) {
-    const auto tguid_str = prompt("Theater GUID: ");
-    const auto mguid_str = prompt("Movie GUID: ");
-    const theater_guid_t tguid(tguid_str);
-    const movie_guid_t mguid(mguid_str);
+    const auto tguid = prompt<theater_guid_t>("Theater GUID: ");
+    const auto mguid = prompt<movie_guid_t>("Movie GUID: ");
 
     const auto movie = movie_registry.load(mguid);
     if (!movie) {
@@ -100,8 +99,8 @@ namespace {
   }
 
   void cmd_list_movies_in_theater(TheaterRegistry& theater_registry, MovieRegistry& movie_registry) {
-    const auto tguid_str = prompt("Theater GUID: ");
-    const auto theater = theater_registry.load(theater_guid_t(tguid_str));
+    const auto tguid = prompt<theater_guid_t>("Theater GUID: ");
+    const auto theater = theater_registry.load(tguid);
     if (!theater) {
       std::cout << "No theater found\n";
       return;
@@ -132,9 +131,13 @@ namespace {
     }
   }
 
-  void cmd_theaters_for_movie(TheaterRegistry& theater_registry) {
-    const auto mguid_str = prompt("Movie GUID: ");
-    const movie_guid_t mguid(mguid_str);
+  void cmd_theaters_for_movie(MovieRegistry& movie_registry, TheaterRegistry& theater_registry) {
+    const auto mguid = prompt<movie_guid_t>("Movie GUID: ");
+    const auto movie = movie_registry.load(mguid);
+    if (!movie) {
+      std::cout << "No movie found\n";
+      return;
+    }
     const auto theaters = theater_registry.load_theaters_showing_movie(mguid, 0, 1000);
     if (theaters.empty()) {
       std::cout << "No theaters for this movie\n";
@@ -161,10 +164,20 @@ namespace {
     std::cout << ss.str() << "\n";
   }
 
-  void cmd_show_seats(SeatsRegistry& seats_registry) {
-    const auto tguid_str = prompt("Theater GUID: ");
-    const auto mguid_str = prompt("Movie GUID: ");
-    const auto s = seats_registry.load(theater_guid_t(tguid_str), movie_guid_t(mguid_str));
+  void cmd_show_seats(TheaterRegistry& theater_registry, MovieRegistry& movie_registry, SeatsRegistry& seats_registry) {
+    const auto tguid = prompt<theater_guid_t>("Theater GUID: ");
+    const auto mguid = prompt<movie_guid_t>("Movie GUID: ");
+    const auto theater = theater_registry.load(tguid);
+    if (!theater) {
+      std::cout << "No theater found\n";
+      return;
+    }
+    const auto movie = movie_registry.load(mguid);
+    if (!movie) {
+      std::cout << "No movie found\n";
+      return;
+    }
+    const auto s = seats_registry.load(tguid, mguid);
     if (!s) {
       std::cout << "No movie showing in this theater\n";
       return;
@@ -172,17 +185,29 @@ namespace {
     print_seats(*s);
   }
 
-  void cmd_book_seats(SeatsRegistry& seats_registry) {
-    const auto tguid_str = prompt("Theater GUID: ");
-    const auto mguid_str = prompt("Movie GUID: ");
+  void cmd_book_seats(TheaterRegistry& theater_registry, MovieRegistry& movie_registry, SeatsRegistry& seats_registry) {
+    const auto tguid = prompt<theater_guid_t>("Theater GUID: ");
+    const auto mguid = prompt<movie_guid_t>("Movie GUID: ");
+    const auto theater = theater_registry.load(tguid);
+    if (!theater) {
+      std::cout << "No theater found\n";
+      return;
+    }
+    const auto movie = movie_registry.load(mguid);
+    if (!movie) {
+      std::cout << "No movie found\n";
+      return;
+    }
     const auto seats_csv = prompt("Seats to book (comma separated, e.g. a1,b2,c3): ");
     std::set<seat_guid_t> seats_to_book;
     std::istringstream ss(seats_csv);
     std::string token;
     while (std::getline(ss, token, ',')) {
-      if (!token.empty()) seats_to_book.insert(seat_guid_t(token));
+      if (!token.empty()) {
+        seats_to_book.insert(seat_guid_t(token));
+      }
     }
-    const bool ok = seats_registry.book_seats(theater_guid_t(tguid_str), movie_guid_t(mguid_str), seats_to_book);
+    const bool ok = seats_registry.book_seats(tguid, mguid, seats_to_book);
     std::cout << (ok ? "OK: seats booked\n" : "ERR: failed to book seats\n");
   }
 
@@ -233,11 +258,11 @@ int main(int /*args*/, char* /*argv*/[]) {
     } else if (cmd == "list-theaters") {
       cmd_list_theaters(theater_registry);
     } else if (cmd == "theaters-for-movie") {
-      cmd_theaters_for_movie(theater_registry);
+      cmd_theaters_for_movie(movie_registry, theater_registry);
     } else if (cmd == "show-seats") {
-      cmd_show_seats(seats_registry);
+      cmd_show_seats(theater_registry, movie_registry, seats_registry);
     } else if (cmd == "book-seats") {
-      cmd_book_seats(seats_registry);
+      cmd_book_seats(theater_registry, movie_registry, seats_registry);
     } else if (cmd == "exit" || cmd == "quit" || cmd == "q") {
       break;
     } else if (cmd.empty()) {
